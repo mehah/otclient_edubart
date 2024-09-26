@@ -1,0 +1,9 @@
+Module
+  name: game_jumpbutton
+  description:
+  author: edubart
+  website: https://github.com/edubart/otclient
+  sandboxed: true
+  scripts: [ jumpbutton ]
+  @onLoad: init()
+  @onUnload: terminate()

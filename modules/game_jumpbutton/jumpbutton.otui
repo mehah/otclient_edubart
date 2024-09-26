@@ -1,0 +1,10 @@
+MainWindow
+  anchors.centerIn: parent
+  size: 300 300
+
+  Button
+    id: jumpButton
+    anchors.bottom: parent.bottom
+    anchors.right: parent.right
+    text: Jump!
+    @onClick: jump()
