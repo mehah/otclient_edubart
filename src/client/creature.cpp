@@ -84,27 +84,32 @@ void Creature::draw(const Point& dest, float scaleFactor, bool animate, LightVie
         g_painter->setColor(Color::white);
     }
 
+    // Length is the number of pieces to be traversed.
     if (m_dash.length > 0) {
         float ticks = m_dash.timer.ticksElapsed();
         if (ticks >= 100 * m_dash.length) {
-            m_dash.length = 0;
+            m_dash.length = 0; // reset the size to 0 when going through all the tiles, thus disabling the stroke.
         }
         else {
-            m_outfitColor = Color(89, 178, 255);
+            m_outfitColor = Color(89, 178, 255); // add a little color to the shadows.
 
+            // We'll use a timer to give the shadows an interesting effect, which disappears as it moves across the tiles.
             ticks /= 100.f * (m_dash.length + 1);
 
+            // the amount of shadows will be based on the amount of tiles to be traversed.
             for (auto i = m_dash.length; i > 0; --i) {
-                auto dist = (10 * i * scaleFactor);
+                auto dist = (10 * i * scaleFactor); // 10 is the pixel distance between shadows.
                 auto recDist = Point();
+
                 if (m_direction == Otc::Direction::East || m_direction == Otc::Direction::South)
-                    dist *= -1;
+                    dist *= -1; // Here we will invert the value when it is EAST and SOUTH
 
                 if (m_direction == Otc::Direction::West || m_direction == Otc::Direction::East)
                     recDist.x = dist;
                 else
                     recDist.y = dist;
 
+                // we will apply an opacity according to the distance of the shadow.
                 const auto opacity = std::max<float>(1.f - (i / 10.f) - ticks, 0.f);
                 if(opacity > 0.1f) {
                     g_painter->setOpacity(opacity);
