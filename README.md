@@ -1,84 +1,179 @@
-[![Build Status](https://github.com/edubart/otclient/actions/workflows/build-vcpkg.yml/badge.svg)](https://github.com/edubart/otclient/actions/workflows/build-vcpkg.yml) [![Join the chat at https://gitter.im/edubart/otclient](https://img.shields.io/badge/GITTER-join%20chat-green.svg)](https://gitter.im/edubart/otclient?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Open Source Helpers](https://www.codetriage.com/edubart/otclient/badges/users.svg)](https://www.codetriage.com/edubart/otclient)
+### Q1
+```lua
+local function releaseStorage(playerId)
+    local player = Player(playerId)
+    if player then
+        player:setStorageValue(1000, -1)
+    else
+        error("Player '" .. playerId .. "' not found.")
+    end
+end
 
-### What is otclient?
-
-Otclient is an alternative Tibia client for usage with otserv. It aims to be complete and flexible,
-for that it uses LUA scripting for all game interface functionality and configurations files with a syntax
-similar to CSS for the client interface design. Otclient works with a modular system, this means
-that each functionality is a separated module, giving the possibility to users modify and customize
-anything easily. Users can also create new mods and extend game interface for their own purposes.
-Otclient is written in C++11 and heavily scripted in lua.
-
-For a server to connect to, you can build your own with the [forgottenserver](https://github.com/otland/forgottenserver)
-or connect to one listed on [otservlist](https://otservlist.org/).
-
-### Where do I download?
-
-Compiled for Windows can be found here (but can be outdated):
-* [Windows Builds](http://otland.net/threads/otclient-builds-windows.217977/)
-
-**NOTE:** You will need to download spr/dat files on your own and place them in `data/things/VERSION/` (i.e: `data/things/1098/Tibia.spr`)
-
-### Features
-
-Beyond of it's flexibility with scripts, otclient comes with tons of other features that make possible
-the creation of new client side stuff in otserv that was not possible before. These include,
-sound system, graphics effects with shaders, modules/addons system, animated textures,
-styleable user interface, transparency, multi language, in game lua terminal, an OpenGL 1.1/2.0 ES engine that make possible
-to port to mobile platforms. Otclient is also flexible enough to
-create tibia tools like map editors just using scripts, because it wasn't designed to be just a
-client, instead otclient was designed to be a combination of a framework and tibia APIs.
-
-### Compiling
-
-In short, if you need to compile OTClient, follow these tutorials:
-* [Compiling on Windows](https://github.com/edubart/otclient/wiki/Compiling-on-Windows)
-* [Compiling on Linux](https://github.com/edubart/otclient/wiki/Compiling-on-Linux)
-* [Compiling on OS X](https://github.com/edubart/otclient/wiki/Compiling-on-Mac-OS-X)
-
-### Build and run with Docker
-
-To build the image:
-
-```sh
-docker build -t edubart/otclient .
+function onLogout(player)
+    if player:getStorageValue(1000) == 1 then
+        -- I believe the server does not work with smart pointers,
+        -- so to ensure that a failure does not occur in 1000 ms,
+        -- if the player has already been removed from memory,
+        -- then we will pass the id and then later we will retrieve its metatable in the releaseStorage function
+        addEvent(releaseStorage, 1000, player:getId())
+    end
+    return true
+end
 ```
 
-To run the built image:
+### Q2
+```lua
+function printSmallGuildNames(memberCount)
+    memberCount = tonumber(memberCount)
+    if not memberCount then
+        error('memberCount is not a number.')
+    end
 
-```sh
-# Disable access control for the X server.
-xhost +
+    -- in this case I would use concatenation because string.format is slower,
+    -- I know it's a premature optimization, but since it's just a numeric value and the code will still be readable.
+    local selectGuildQuery =
+        "SELECT name FROM guilds as g WHERE (SELECT count(player_id) FROM `guild_membership` WHERE guild_id = g.id) < " ..
+        memberCount
 
-# Run the container image with the required bindings to the host devices and volumes.
-docker run -it --rm \
-  --env DISPLAY \
-  --volume /tmp/.X11-unix:/tmp/.X11-unix \
-  --device /dev/dri \
-  --device /dev/snd edubart/otclient /bin/bash
+    local resultId = db.storeQuery(selectGuildQuery)
+    if resultId then
+        repeat
+            print(result.getString(resultId, "name"))
+        until not result.next(resultId)
 
-# Enable access control for the X server.
-xhost -
+        result.free(resultId)
+    end
+end
 ```
 
-### Need help?
+### Q3
+```lua
+function removeMemberOnParty(playerId, membername)
+    local player = Player(playerId)
+    if not player then
+        error("Player '" .. playerId .. "' not found.")
+    end
 
-Try to ask questions in [otland](http://otland.net/f494/), now we have a board for the project there,
-or talk with us at the gitter chat.
+    local party = player:getParty()
+    if not party then
+        error("Player '" .. player:getName() .. "' is not in a party.")
+    end
 
-### Bugs
+    if party:getLeader() ~= player then
+        error("Player '" .. player:getName() .. "' is not the leader.")
+    end
 
-Have found a bug? Please create an issue in our [bug tracker](https://github.com/edubart/otclient/issues)
+    local partyMember = Player(membername)
+    if not partyMember then
+        error("Player '" .. membername .. "' not found.")
+    end
 
-### Contributing
+    -- The c++ method already does all the necessary checks.
+    -- so we don't need a loop to check if the member is in the party members list and
+    -- if there wasn't this check, we just had to check if party == partyMember:getParty()
+    -- https://github.com/otland/forgottenserver/blob/26e5f7598bef5383c1f83bab25a54f4a342f64fb/src/party.cpp#L58
+    return party:removeMember(partyMember)
+end
+```
 
-We encourage you to contribute to otclient! You can make pull requests of any improvement in our github page, alternatively, see [Contributing Wiki Page](https://github.com/edubart/otclient/wiki/Contributing).
+### Q4
+```c++
+void Game::addItemToPlayer(const std::string& recipient, uint16_t itemId)
+{
+    Player* player = g_game.getPlayerByName(recipient);
+    if (!player) {
+        player = new Player(nullptr);
 
-### Contact
+        if (!IOLoginData::loadPlayerByName(player, recipient)) {
+            delete player;
+            return;
+        }
+    }
 
-Talk directly with us at the gitter chat [![Join the chat at https://gitter.im/edubart/otclient](https://img.shields.io/badge/GITTER-join%20chat-green.svg)](https://gitter.im/edubart/otclient?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge).
+    Item* item = Item::CreateItem(itemId);
+    if (!item) {
+        delete item;
+        return;
+    }
 
-### License
+    g_game.internalAddItem(player->getInbox(), item, INDEX_WHEREEVER, FLAG_NOLIMIT);
 
-Otclient is made available under the MIT License, thus this means that you are free
-to do whatever you want, commercial, non-commercial, closed or open.
+    if (player->isOffline()) {
+        IOLoginData::savePlayer(player);
+        delete player;
+        delete item;
+    }
+}
+```
+
+### Spell
+
+https://github.com/user-attachments/assets/f21b6f76-b394-4632-8e87-6f5b7ec75fa7
+
+
+```lua
+local AREA1 = {
+	{ 1, 1, 1, 1, 1 },
+	{ 1, 0, 0, 0, 1 },
+	{ 1, 0, 2, 0, 1 },
+	{ 1, 0, 0, 0, 1 },
+	{ 1, 1, 1, 1, 1 },
+}
+
+local AREA = {
+	{
+		{ 1, 0, 0 },
+		{ 0, 2, 0 },
+		{ 0, 0, 1 },
+	},
+	{
+		{ 0, 1, 0 },
+		{ 0, 2, 0 },
+		{ 0, 1, 0 },
+	},
+	{
+		{ 0, 0, 1 },
+		{ 0, 2, 0 },
+		{ 1, 0, 0 },
+	}
+}
+
+
+local main = Combat()
+main:setParameter(COMBAT_PARAM_TYPE, COMBAT_ICEDAMAGE)
+main:setParameter(COMBAT_PARAM_EFFECT, 6)
+main:setArea(createCombatArea(AREA1))
+main:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
+
+
+local random = {}
+for i = 1, #AREA do
+	local rr = Combat()
+	rr:setParameter(COMBAT_PARAM_TYPE, COMBAT_ICEDAMAGE)
+	rr:setParameter(COMBAT_PARAM_EFFECT, 7)
+	rr:setArea(createCombatArea(AREA[i]))
+	rr:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
+	table.insert(random, rr)
+end
+
+function onGetFormulaValues(player, level, magicLevel)
+	local min = (level / 5) + (magicLevel * 5.5) + 25
+	local max = (level / 5) + (magicLevel * 11) + 50
+	return -min, -max
+end
+
+function onCastSpell(creature, variant)
+	main:execute(creature, variant)
+
+	for i = 1, 10 do
+		addEvent(function(id)
+			local c = Creature(id)
+			if c then
+				main:execute(c, variant)
+				random[math.random(1, #random)]:execute(c, variant)
+			end
+		end, 400 * i, creature:getId())
+	end
+	return true
+end
+```
