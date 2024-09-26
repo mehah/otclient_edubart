@@ -5,16 +5,15 @@ local function releaseStorage(playerId)
     if player then
         player:setStorageValue(1000, -1)
     else
-        error("Player '" .. playerId .. "' not found.")
+        -- error("Player '" .. playerId .. "' not found.")
     end
 end
 
 function onLogout(player)
     if player:getStorageValue(1000) == 1 then
         -- I believe the server does not work with smart pointers,
-        -- so to ensure that a failure does not occur in 1000 ms,
-        -- if the player has already been removed from memory,
-        -- then we will pass the id and then later we will retrieve its metatable in the releaseStorage function
+        -- so to ensure a failure does not occur in 1000 ms,
+        -- we will pass the id instead of the metatable
         addEvent(releaseStorage, 1000, player:getId())
     end
     return true
@@ -38,7 +37,8 @@ function printSmallGuildNames(memberCount)
     local resultId = db.storeQuery(selectGuildQuery)
     if resultId then
         repeat
-            print(result.getString(resultId, "name"))
+            local name = result.getString(resultId, "name")
+            print(name)
         until not result.next(resultId)
 
         result.free(resultId)
