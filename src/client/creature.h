@@ -134,6 +134,11 @@ public:
     virtual void onDisappear();
     virtual void onDeath();
 
+    void setDashLength(uint8_t length) {
+        m_dash.length = length;
+        m_dash.timer.restart();
+    }
+
 protected:
     virtual void updateWalkAnimation(int totalPixelsWalked, int stepDuration);
     virtual void updateWalkOffset(int totalPixelsWalked);
@@ -204,6 +209,11 @@ protected:
     float m_jumpDuration;
     PointF m_jumpOffset;
     Timer m_jumpTimer;
+
+    struct {
+        uint8_t length = 0;
+        Timer timer;
+    } m_dash;
 };
 
 // @bindclass

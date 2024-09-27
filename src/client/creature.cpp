@@ -30,6 +30,8 @@
 #include "effect.h"
 #include "luavaluecasts.h"
 #include "lightview.h"
+#include "shadermanager.h"
+
 
 #include <framework/graphics/graphics.h>
 #include <framework/core/eventdispatcher.h>
@@ -82,7 +84,72 @@ void Creature::draw(const Point& dest, float scaleFactor, bool animate, LightVie
         g_painter->setColor(Color::white);
     }
 
-    internalDrawOutfit(dest + animationOffset * scaleFactor, scaleFactor, animate, animate, m_direction);
+    // Length is the number of tiles to be traversed.
+    if (m_dash.length > 0) {
+        float ticks = m_dash.timer.ticksElapsed();
+        if (ticks >= 100 * m_dash.length) {
+            m_dash.length = 0; // reset the size to 0 when going through all the tiles, thus disabling the dash.
+        }
+        else {
+            const auto bckOutfitColor = m_outfitColor;
+
+            m_outfitColor = Color(89, 178, 255); // add a little color to the shadows.
+
+            // We'll use a timer to give the shadows an interesting effect, which disappears as it moves across the tiles.
+            ticks /= 100.f * (m_dash.length + 1);
+
+            // the amount of shadows will be based on the amount of tiles to be traversed.
+            for (auto i = m_dash.length; i > 0; --i) {
+                auto dist = (10 * i * scaleFactor); // 10 is the pixel distance between shadows.
+                auto recDist = Point();
+
+                if (m_direction == Otc::Direction::East || m_direction == Otc::Direction::South)
+                    dist *= -1; // Here we will invert the value when it is EAST and SOUTH
+
+                if (m_direction == Otc::Direction::West || m_direction == Otc::Direction::East)
+                    recDist.x = dist;
+                else
+                    recDist.y = dist;
+
+                // we will apply an opacity according to the distance of the shadow.
+                const auto opacity = std::max<float>(1.f - (i / 10.f) - ticks, 0.f);
+                if(opacity > 0.1f) {
+                    g_painter->setOpacity(opacity);
+                    internalDrawOutfit(dest + recDist + animationOffset * scaleFactor, scaleFactor, animate, animate, m_direction);
+                }
+            }
+
+            g_painter->resetOpacity();
+            m_outfitColor = bckOutfitColor;
+        }
+    }
+
+    auto __dest = dest + animationOffset * scaleFactor;
+
+    // Draw Creature with framebuffer to use outline shader
+    if (m_dash.length > 0) {
+        const auto exactSize = rawGetThingType()->getExactSize();
+        const int size = static_cast<int>(Otc::TILE_PIXELS * std::max<int>(rawGetThingType()->getSize().area(), 2) * scaleFactor);
+        const auto& p = (Point(size, size) - Point(exactSize, exactSize)) / 2;
+        const auto& destFB = Rect(__dest - p, Size{ size,size });
+
+        g_painter->setShaderProgram(g_shaders.getOutlineShader());
+        const FrameBufferPtr& outfitBuffer = g_framebuffers.getTemporaryFrameBuffer();
+        outfitBuffer->resize(destFB.size());
+        outfitBuffer->bind();
+        g_painter->setAlphaWriting(true);
+        g_painter->clear(Color::alpha);
+
+        internalDrawOutfit(p, scaleFactor, animate, animate, m_direction);
+
+        outfitBuffer->release();
+        outfitBuffer->draw(destFB, Rect(0, 0, destFB.size()));
+        g_painter->resetShaderProgram();
+    }
+    else {
+        internalDrawOutfit(__dest * scaleFactor, scaleFactor, animate, animate, m_direction);
+    }
+
     m_footStepDrawn = true;
 
     if(lightView) {
