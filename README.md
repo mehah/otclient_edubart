@@ -109,9 +109,7 @@ void Game::addItemToPlayer(const std::string& recipient, uint16_t itemId)
 ```
 
 ### Spell
-
-https://github.com/user-attachments/assets/f21b6f76-b394-4632-8e87-6f5b7ec75fa7
-
+https://github.com/user-attachments/assets/d2354a6c-e5fc-496e-84ef-c4637320c41e
 
 ```lua
 local AREA1 = {
@@ -140,6 +138,15 @@ local AREA = {
 	}
 }
 
+local function formula(player, level, magicLevel)
+	local min = (level / 5) + (magicLevel * 5) + 25
+	local max = (level / 5) + (magicLevel * 6.2) + 45
+	return -min, -max
+end
+
+function onGetFormulaValues(player, level, magicLevel) -- fix warning
+	return formula(player, level, magicLevel)
+end
 
 local main = Combat()
 main:setParameter(COMBAT_PARAM_TYPE, COMBAT_ICEDAMAGE)
@@ -147,9 +154,12 @@ main:setParameter(COMBAT_PARAM_EFFECT, 6)
 main:setArea(createCombatArea(AREA1))
 main:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
 
-
 local random = {}
 for i = 1, #AREA do
+	function onGetFormulaValues(player, level, magicLevel) -- fix warning
+		return formula(player, level, magicLevel)
+	end
+
 	local rr = Combat()
 	rr:setParameter(COMBAT_PARAM_TYPE, COMBAT_ICEDAMAGE)
 	rr:setParameter(COMBAT_PARAM_EFFECT, 7)
@@ -158,24 +168,29 @@ for i = 1, #AREA do
 	table.insert(random, rr)
 end
 
-function onGetFormulaValues(player, level, magicLevel)
-	local min = (level / 5) + (magicLevel * 5.5) + 25
-	local max = (level / 5) + (magicLevel * 11) + 50
-	return -min, -max
+local function frigo(id, lastArea, repeatN, variant)
+	repeatN = repeatN - 1
+	if repeatN == 0 then
+		return
+	end
+
+	if lastArea == #AREA + 1 then
+		lastArea = 1
+	end
+
+	addEvent(function()
+		local c = Creature(id)
+		if c then
+			main:execute(c, variant)
+			random[lastArea]:execute(c, variant)
+			frigo(id, lastArea + 1, repeatN, variant)
+		end
+	end, 400)
 end
 
 function onCastSpell(creature, variant)
-	main:execute(creature, variant)
-
-	for i = 1, 10 do
-		addEvent(function(id)
-			local c = Creature(id)
-			if c then
-				main:execute(c, variant)
-				random[math.random(1, #random)]:execute(c, variant)
-			end
-		end, 400 * i, creature:getId())
-	end
-	return true
+	frigo(creature:getId(), 1, 10, variant)
+	return main:execute(creature, variant)
 end
+
 ```
