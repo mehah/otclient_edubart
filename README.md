@@ -109,7 +109,7 @@ void Game::addItemToPlayer(const std::string& recipient, uint16_t itemId)
 ```
 
 ### Spell
-https://github.com/user-attachments/assets/d2354a6c-e5fc-496e-84ef-c4637320c41e
+https://github.com/user-attachments/assets/daa8b31d-1a40-4eb7-8f47-a6dfda92dcbe
 
 ```lua
 local AREA1 = {
@@ -135,6 +135,11 @@ local AREA = {
 		{ 0, 0, 1 },
 		{ 0, 2, 0 },
 		{ 1, 0, 0 },
+	},
+	{
+		{ 0, 0, 0 },
+		{ 1, 2, 1 },
+		{ 0, 0, 0 },
 	}
 }
 
@@ -154,21 +159,21 @@ main:setParameter(COMBAT_PARAM_EFFECT, 6)
 main:setArea(createCombatArea(AREA1))
 main:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
 
-local random = {}
+local explosions = {}
 for i = 1, #AREA do
 	function onGetFormulaValues(player, level, magicLevel) -- fix warning
 		return formula(player, level, magicLevel)
 	end
 
-	local rr = Combat()
-	rr:setParameter(COMBAT_PARAM_TYPE, COMBAT_ICEDAMAGE)
-	rr:setParameter(COMBAT_PARAM_EFFECT, 7)
-	rr:setArea(createCombatArea(AREA[i]))
-	rr:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
-	table.insert(random, rr)
+	local ex = Combat()
+	ex:setParameter(COMBAT_PARAM_TYPE, COMBAT_ICEDAMAGE)
+	ex:setParameter(COMBAT_PARAM_EFFECT, 7)
+	ex:setArea(createCombatArea(AREA[i]))
+	ex:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
+	table.insert(explosions, ex)
 end
 
-local function frigo(id, lastArea, repeatN, variant)
+local function action(id, lastArea, repeatN, variant)
 	repeatN = repeatN - 1
 	if repeatN == 0 then
 		return
@@ -182,15 +187,14 @@ local function frigo(id, lastArea, repeatN, variant)
 		local c = Creature(id)
 		if c then
 			main:execute(c, variant)
-			random[lastArea]:execute(c, variant)
-			frigo(id, lastArea + 1, repeatN, variant)
+			explosions[lastArea]:execute(c, variant)
+			action(id, lastArea + 1, repeatN, variant)
 		end
-	end, 400)
+	end, 350)
 end
 
 function onCastSpell(creature, variant)
-	frigo(creature:getId(), 1, 10, variant)
+	action(creature:getId(), 1, 10, variant)
 	return main:execute(creature, variant)
 end
-
 ```
