@@ -88,7 +88,7 @@ void Creature::draw(const Point& dest, float scaleFactor, bool animate, LightVie
     if (m_dash.length > 0) {
         float ticks = m_dash.timer.ticksElapsed();
         if (ticks >= 100 * m_dash.length) {
-            m_dash.length = 0; // reset the size to 0 when going through all the tiles, thus disabling the stroke.
+            m_dash.length = 0; // reset the size to 0 when going through all the tiles, thus disabling the dash.
         }
         else {
             m_outfitColor = Color(89, 178, 255); // add a little color to the shadows.
