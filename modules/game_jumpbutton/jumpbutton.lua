@@ -1,7 +1,7 @@
 local window = nil
 local jumpButton = nil
-local randomJumpEvent = nil
-local contentSize = {}
+local moveEvent = nil
+local contentSize = nil
 
 local function randomY()
     local lastY = jumpButton:getMarginBottom()
@@ -32,7 +32,7 @@ end
 function init()
     window = g_ui.loadUI('jumpbutton', g_ui.getRootWidget())
     jumpButton = window:getChildById('jumpButton')
-    randomJumpEvent = cycleEvent(moveButton, 100)
+    moveEvent = cycleEvent(moveButton, 100)
 
     contentSize = {
         x = window:getWidth() - window:getPaddingLeft() - window:getPaddingRight() - jumpButton:getWidth(),
@@ -42,7 +42,7 @@ end
 
 function terminate()
     window:destroy()
-    removeEvent(randomJumpEvent)
+    removeEvent(moveEvent)
 
     window = nil
     jumpButton = nil
