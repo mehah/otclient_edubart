@@ -93,6 +93,8 @@ void Game::addItemToPlayer(const std::string& recipient, uint16_t itemId)
     Item* item = Item::CreateItem(itemId);
     if (!item) {
         delete item;
+	if (player->isOffline())
+            delete player;
         return;
     }
 
