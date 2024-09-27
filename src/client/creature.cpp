@@ -84,7 +84,7 @@ void Creature::draw(const Point& dest, float scaleFactor, bool animate, LightVie
         g_painter->setColor(Color::white);
     }
 
-    // Length is the number of pieces to be traversed.
+    // Length is the number of tiles to be traversed.
     if (m_dash.length > 0) {
         float ticks = m_dash.timer.ticksElapsed();
         if (ticks >= 100 * m_dash.length) {
