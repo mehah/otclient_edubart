@@ -91,6 +91,8 @@ void Creature::draw(const Point& dest, float scaleFactor, bool animate, LightVie
             m_dash.length = 0; // reset the size to 0 when going through all the tiles, thus disabling the dash.
         }
         else {
+            const auto bckOutfitColor = m_outfitColor;
+
             m_outfitColor = Color(89, 178, 255); // add a little color to the shadows.
 
             // We'll use a timer to give the shadows an interesting effect, which disappears as it moves across the tiles.
@@ -118,7 +120,7 @@ void Creature::draw(const Point& dest, float scaleFactor, bool animate, LightVie
             }
 
             g_painter->resetOpacity();
-            m_outfitColor = Color::white;
+            m_outfitColor = bckOutfitColor;
         }
     }
 

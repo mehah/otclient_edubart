@@ -137,8 +137,6 @@ public:
     void setDashLength(uint8_t length) {
         m_dash.length = length;
         m_dash.timer.restart();
-        m_dash.startPosition = m_position;
-        m_dash.endPosition = m_position.translatedToDirections({ length, m_direction })[length - 1];
     }
 
 protected:
@@ -214,8 +212,6 @@ protected:
 
     struct {
         uint8_t length = 0;
-        Position startPosition;
-        Position endPosition;
         Timer timer;
     } m_dash;
 };
